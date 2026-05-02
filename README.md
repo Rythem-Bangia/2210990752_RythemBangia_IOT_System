@@ -1,3 +1,13 @@
+Rythem Bangia - 2210990752
+
+
+
+
+
+
+
+
+
 # Water leak IoT — React Native + Supabase + Tailwind (NativeWind)
 
 End-to-end system for **moisture-based leak detection**, **automatic solenoid valve shutoff** (represented in software), **email alerts**, and **history** — compatible with **physical** hardware (MCU + sensors + valve driver) and **virtual** simulation (no hardware).
