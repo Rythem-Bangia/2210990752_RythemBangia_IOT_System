@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "author": "Rythem Bangia",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp",      "top": -100, "left":  100, "attrs": {} },
+
+    { "type": "wokwi-potentiometer",     "id": "potK",     "top": -200, "left": -120, "attrs": { "value": "300" } },
+    { "type": "wokwi-potentiometer",     "id": "potB",     "top":  -50, "left": -120, "attrs": { "value": "300" } },
+    { "type": "wokwi-potentiometer",     "id": "potS",     "top":  100, "left": -120, "attrs": { "value": "300" } },
+    { "type": "wokwi-potentiometer",     "id": "potT",     "top":  250, "left": -120, "attrs": { "value": "650", "label": "THRESHOLD" } },
+
+    { "type": "wokwi-led",               "id": "alarmLed", "top": -180, "left": 360, "attrs": { "color": "red"   } },
+    { "type": "wokwi-resistor",          "id": "alarmR",   "top": -150, "left": 280, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-led",               "id": "valveLed", "top": -100, "left": 360, "attrs": { "color": "green" } },
+    { "type": "wokwi-resistor",          "id": "valveR",   "top":  -70, "left": 280, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-buzzer",            "id": "buzzer1",  "top":   20, "left": 360, "attrs": {} },
+
+    { "type": "wokwi-pushbutton",        "id": "btn1",     "top":  140, "left": 360, "attrs": { "color": "blue", "label": "RESET" } },
+
+    { "type": "wokwi-servo",             "id": "servo1",   "top":  260, "left": 360, "attrs": {} }
+  ],
+  "connections": [
+    [ "potK:VCC", "esp:3V3", "red",    [ "v0" ] ],
+    [ "potK:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "potK:SIG", "esp:VP",   "yellow", [ "v0" ] ],
+
+    [ "potB:VCC", "esp:3V3", "red",    [ "v0" ] ],
+    [ "potB:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "potB:SIG", "esp:VN",   "yellow", [ "v0" ] ],
+
+    [ "potS:VCC", "esp:3V3", "red",    [ "v0" ] ],
+    [ "potS:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "potS:SIG", "esp:D34",  "yellow", [ "v0" ] ],
+
+    [ "potT:VCC", "esp:3V3", "red",    [ "v0" ] ],
+    [ "potT:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "potT:SIG", "esp:D35",  "orange", [ "v0" ] ],
+
+    [ "esp:D18",   "alarmR:1",  "red",   [ "v0" ] ],
+    [ "alarmR:2",  "alarmLed:A","red",   [ "v0" ] ],
+    [ "alarmLed:C","esp:GND.2", "black", [ "v0" ] ],
+
+    [ "esp:D19",   "valveR:1",  "green", [ "v0" ] ],
+    [ "valveR:2",  "valveLed:A","green", [ "v0" ] ],
+    [ "valveLed:C","esp:GND.2", "black", [ "v0" ] ],
+
+    [ "esp:D23",     "buzzer1:1", "magenta", [ "v0" ] ],
+    [ "buzzer1:2",   "esp:GND.2", "black",   [ "v0" ] ],
+
+    [ "esp:D5",   "btn1:1.l",  "blue",  [ "v0" ] ],
+    [ "btn1:2.r", "esp:GND.2", "black", [ "v0" ] ],
+
+    [ "esp:5V",   "servo1:V+", "red",    [ "v0" ] ],
+    [ "esp:GND.2","servo1:GND","black",  [ "v0" ] ],
+    [ "esp:D13",  "servo1:PWM","orange", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

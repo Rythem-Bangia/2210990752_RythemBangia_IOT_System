@@ -1,0 +1,6 @@
+# Wokwi auto-installs libraries listed here. The ESP32 core already
+# ships WiFi, WiFiClientSecure, and HTTPClient — only these two are
+# extra.
+
+ArduinoJson@^7.0.4
+ESP32Servo@^1.1.2

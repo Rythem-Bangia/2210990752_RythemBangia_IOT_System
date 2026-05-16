@@ -6,6 +6,8 @@
 **/.env
 .env*.local
 **/.env.*.local
+# ESP32 / Wokwi firmware credentials (Supabase URL, anon key, device secret, WiFi)
+water-leak-monitor/firmware/aquaguard_esp32_wokwi/secrets.h
 
 # Dependencies
 node_modules/

@@ -1,0 +1,8 @@
+# Wokwi project metadata. Used by wokwi-cli (`wokwi-cli simulate .`)
+# and silently ignored by wokwi.com's web simulator. Either workflow
+# is fine.
+
+[wokwi]
+version = 1
+elf     = ".build/aquaguard_esp32_wokwi.ino.elf"
+firmware = ".build/aquaguard_esp32_wokwi.ino.bin"
