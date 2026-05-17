@@ -1,0 +1,12 @@
+{
+  "name": "aquaguard-virtual-gateway",
+  "version": "1.0.0",
+  "description": "Browser-based control panel that talks to Supabase the same way the ESP32/Pi firmware does. Zero npm deps.",
+  "private": true,
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "open": "open http://localhost:4000"
+  }
+}

@@ -1,11 +1,14 @@
 # AQUAGUARD IoT - Dynamic Water Leak Detection
 
-Two firmware options live in this folder:
+Three options live in this folder, ranked by how easy they are to demo:
 
 | Folder | Best for | Talks to app via |
 |--------|----------|------------------|
-| `aquaguard_esp32_wokwi/` | **Wokwi (recommended for live demo)** or a real ESP32 | Direct HTTPS to Supabase RPC, no PC bridge |
+| `virtual-gateway/` | **Browser-based control panel — easiest, zero hardware, zero simulator** | Direct HTTPS to Supabase RPC, runs in any browser |
+| `aquaguard_esp32_wokwi/` | Wokwi simulator or a real ESP32 | Direct HTTPS to Supabase RPC, no PC bridge |
 | `aquaguard_iot/` | Tinkercad / Arduino Uno over USB | Manual mirror, or `bridge/serial-bridge.mjs` |
+
+**For a teacher demo this week, use `virtual-gateway/` — see its [README](./virtual-gateway/README.md). One `npm start`, opens in a browser, looks like a control panel, talks to the app over Supabase exactly the way the ESP32 would.**
 
 > **Tinkercad cannot make network calls** — its sandboxed Arduino has no WiFi. To get a live, bidirectional connection between the simulated circuit and the app for a teacher demo, use the **ESP32 + Wokwi** setup below. Wokwi is a free in-browser simulator that ships with virtual WiFi (`Wokwi-GUEST`) and runs the same kind of buzzer / LED / servo / pots circuit.
 

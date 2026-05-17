@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AQUAGUARD — Virtual Gateway</title>
+  <style>
+    :root{
+      --bg:#0b0f17;--panel:#121826;--panel-2:#1a2233;--line:#25304a;
+      --text:#e6edf6;--muted:#93a1bd;--accent:#4ea8ff;
+      --good:#34d399;--bad:#ef4444;--warn:#f59e0b;--violet:#a78bfa;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%}
+    body{
+      font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+      background:radial-gradient(1200px 800px at 0% 0%, #16213a 0%, var(--bg) 60%);
+      color:var(--text);
+    }
+    h1{font-size:18px;margin:0;letter-spacing:.5px}
+    h2{font-size:13px;margin:0 0 12px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px}
+    button{
+      font:inherit;border:1px solid var(--line);background:var(--panel-2);
+      color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;
+      transition:transform .05s ease, background .15s ease, border-color .15s ease;
+    }
+    button:hover{background:#222d44;border-color:#39476a}
+    button:active{transform:translateY(1px)}
+    button.primary{background:linear-gradient(180deg,#3a7bd5,#2756b3);border-color:#3a7bd5}
+    button.danger{background:linear-gradient(180deg,#c0392b,#7a221a);border-color:#c0392b}
+    input[type=text],input[type=password]{
+      font:inherit;background:#0e1422;color:var(--text);
+      border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;
+    }
+    input[type=range]{accent-color:var(--accent);width:100%}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;padding:6px 10px;
+      border-radius:999px;background:var(--panel-2);border:1px solid var(--line);
+      color:var(--muted);font-size:12px;letter-spacing:.4px;
+    }
+    .pill.good{color:var(--good);border-color:#1d4d3c}
+    .pill.bad{color:var(--bad);border-color:#5b1f1f}
+    .pill.warn{color:var(--warn);border-color:#5a401b}
+    .pill .dot{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+
+    /* Layout */
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:14px 24px;border-bottom:1px solid var(--line);
+      background:rgba(10,14,24,.6);backdrop-filter:blur(8px);
+      position:sticky;top:0;z-index:5;
+    }
+    .topbar .left{display:flex;align-items:center;gap:14px}
+    .topbar .badge{
+      width:36px;height:36px;border-radius:10px;
+      background:linear-gradient(135deg,#1c3460,#0c1a36);
+      display:grid;place-items:center;border:1px solid #2a4072;
+    }
+    .topbar .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .grid{
+      max-width:1200px;margin:0 auto;padding:24px;
+      display:grid;grid-template-columns:1.1fr 1fr;gap:20px;
+    }
+    .card{
+      background:linear-gradient(180deg,var(--panel),#0d1320);
+      border:1px solid var(--line);border-radius:14px;padding:20px;
+      box-shadow:0 6px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .row{display:flex;align-items:center;gap:14px}
+    .row + .row{margin-top:14px}
+    .knob{
+      display:grid;grid-template-columns:120px 1fr 60px;gap:14px;align-items:center;
+    }
+    .knob .name{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:1px}
+    .knob .val{
+      font-variant-numeric:tabular-nums;font-weight:600;text-align:right;
+      color:var(--accent);font-size:15px;
+    }
+    .preset-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .preset-row button{padding:6px 10px;font-size:12px}
+
+    /* Right panel: virtual board */
+    .board{position:relative;display:grid;gap:18px;grid-template-rows:auto auto auto auto;height:100%}
+    .board-row{display:flex;align-items:center;gap:18px}
+    .lamp{
+      width:38px;height:38px;border-radius:50%;
+      background:#1a2336;border:2px solid #20283b;
+      box-shadow: inset 0 -3px 10px rgba(0,0,0,.5);
+      transition:all .25s ease;
+    }
+    .lamp.on.red{
+      background:radial-gradient(circle at 30% 30%, #ff7b6b 0%, #c42a18 70%);
+      box-shadow:0 0 18px #ff5a3e, inset 0 -3px 8px #6e0e02;
+    }
+    .lamp.on.green{
+      background:radial-gradient(circle at 30% 30%, #8fffb6 0%, #1f9a4f 70%);
+      box-shadow:0 0 18px #34d399, inset 0 -3px 8px #0a4823;
+    }
+    .lamp-label{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+    .lamp-value{margin-left:auto;font-weight:600;color:var(--text)}
+    .buzzer{
+      width:54px;height:54px;border-radius:14px;
+      background:linear-gradient(180deg,#1c2740,#0d1424);
+      border:1px solid #2a3a5e;display:grid;place-items:center;
+      transition:all .15s ease;
+    }
+    .buzzer svg{width:30px;height:30px;color:#7588a8}
+    .buzzer.on{
+      background:linear-gradient(180deg,#3a1a18,#1f0a09);
+      border-color:#7d2a1f;
+      animation:buzz .25s steps(2) infinite;
+    }
+    .buzzer.on svg{color:#ff8b7a}
+    @keyframes buzz {
+      0%{transform:translate(-1px,0)}
+      50%{transform:translate(1px,0)}
+      100%{transform:translate(-1px,0)}
+    }
+    .servo{
+      position:relative;width:120px;height:120px;border-radius:50%;
+      background:radial-gradient(circle at 50% 50%, #1d2a45 0%, #0c1322 80%);
+      border:1px solid #2a3a5e;display:grid;place-items:center;
+    }
+    .servo .arm{
+      position:absolute;width:6px;height:48px;left:calc(50% - 3px);bottom:50%;
+      transform-origin:center bottom;
+      background:linear-gradient(180deg,#7aa6e0,#3a6cc4);
+      border-radius:3px;
+      transition:transform .6s cubic-bezier(.2,.8,.2,1);
+    }
+    .servo .center{
+      width:18px;height:18px;border-radius:50%;
+      background:radial-gradient(circle,#3a6cc4,#1f3a72);
+      border:2px solid #16243f;z-index:2;
+    }
+    .servo .label{
+      position:absolute;bottom:-22px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;
+    }
+
+    .log{
+      max-height:180px;overflow:auto;font:12px/1.45 ui-monospace,Menlo,monospace;
+      background:#0a0f1c;border:1px solid var(--line);border-radius:10px;padding:10px;
+      color:#9eb1d4;white-space:pre-wrap;
+    }
+    .log .ok{color:#7ce0a3}
+    .log .err{color:#ff8b7a}
+    .log .hint{color:#9aa9c8}
+    .log .tag{color:#7fa9ff}
+
+    /* Modal */
+    .modal-bg{
+      position:fixed;inset:0;background:rgba(2,5,12,.78);display:grid;place-items:center;
+      z-index:10;backdrop-filter:blur(8px);
+    }
+    .modal{
+      width:min(560px,92vw);background:var(--panel);border:1px solid var(--line);
+      border-radius:14px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.5);
+    }
+    .modal h2{margin-bottom:6px}
+    .modal p{color:var(--muted);margin-top:4px;margin-bottom:16px}
+    .modal .field{margin-bottom:10px}
+    .modal .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px}
+    .modal .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+
+    .footer{padding:6px 24px 24px;color:var(--muted);font-size:12px;text-align:center}
+    a{color:var(--accent)}
+    @media (max-width: 880px){
+      .grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="left">
+      <div class="badge">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#7fb6ff" stroke-width="2">
+          <path d="M12 2 C7 9 5 12 5 15 a7 7 0 0 0 14 0 C19 12 17 9 12 2z"/>
+        </svg>
+      </div>
+      <h1>AQUAGUARD <span style="color:var(--muted);font-weight:400">· Virtual Gateway</span></h1>
+    </div>
+    <div class="right">
+      <span id="cloudPill" class="pill"><span class="dot"></span>Cloud connecting…</span>
+      <span id="thrPill" class="pill">Threshold —</span>
+      <span id="rttPill" class="pill">RTT —</span>
+      <button id="cfgBtn">⚙ Config</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT: controls -->
+    <div class="card">
+      <h2>Sensors</h2>
+
+      <div class="knob">
+        <span class="name">Kitchen</span>
+        <input type="range" id="potK" min="0" max="100" value="20" />
+        <span class="val" id="potKVal">20%</span>
+      </div>
+      <div class="knob">
+        <span class="name">Bathroom</span>
+        <input type="range" id="potB" min="0" max="100" value="20" />
+        <span class="val" id="potBVal">20%</span>
+      </div>
+      <div class="knob">
+        <span class="name">Basement</span>
+        <input type="range" id="potS" min="0" max="100" value="20" />
+        <span class="val" id="potSVal">20%</span>
+      </div>
+
+      <div style="height:1px;background:var(--line);margin:18px 0"></div>
+
+      <h2>Local threshold (used when cloud is unreachable)</h2>
+      <div class="knob">
+        <span class="name">Trip at</span>
+        <input type="range" id="potT" min="0" max="100" value="65" />
+        <span class="val" id="potTVal">65%</span>
+      </div>
+
+      <div class="preset-row">
+        <button data-preset="15">Dry 15%</button>
+        <button data-preset="40">Normal 40%</button>
+        <button data-preset="65">Damp 65%</button>
+        <button data-preset="80">Wet 80%</button>
+        <button data-preset="95" class="danger">Leak 95%</button>
+      </div>
+
+      <div style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap">
+        <button id="resetBtn" class="primary">Reset alarm (local)</button>
+        <button id="forceSendBtn">Send now</button>
+        <label style="margin-left:auto;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px">
+          <input type="checkbox" id="autosend" checked /> Auto-send every 2s
+        </label>
+      </div>
+    </div>
+
+    <!-- RIGHT: virtual board -->
+    <div class="card">
+      <h2>Virtual board</h2>
+      <div class="board">
+
+        <div class="board-row">
+          <div id="alarmLamp" class="lamp red"></div>
+          <span class="lamp-label">Alarm LED</span>
+          <span class="lamp-value" id="alarmText">OFF</span>
+        </div>
+
+        <div class="board-row">
+          <div id="valveLamp" class="lamp green on"></div>
+          <span class="lamp-label">Valve LED</span>
+          <span class="lamp-value" id="valveText">OPEN</span>
+        </div>
+
+        <div class="board-row">
+          <div id="buzzer" class="buzzer">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 10v4h4l5 4V6L7 10H3z"/>
+              <path d="M16 8a5 5 0 0 1 0 8"/>
+              <path d="M19 5a9 9 0 0 1 0 14"/>
+            </svg>
+          </div>
+          <span class="lamp-label">Buzzer</span>
+          <span class="lamp-value" id="buzzerText">SILENT</span>
+        </div>
+
+        <div class="board-row" style="justify-content:center;margin-top:6px;position:relative">
+          <div class="servo">
+            <div class="arm" id="servoArm" style="transform:rotate(0deg)"></div>
+            <div class="center"></div>
+            <div class="label">Valve servo</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Spans the row -->
+    <div class="card" style="grid-column:1/-1">
+      <h2>Logs</h2>
+      <div id="log" class="log"><span class="hint">Waiting for events…</span></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Bidirectional with your Supabase project. Slider up &rarr; app receives leak. App taps "Reset valve" &rarr; this gateway clears the alarm.
+    <br>Source: <code>water-leak-monitor/firmware/virtual-gateway</code>
+  </div>
+
+  <!-- Config Modal -->
+  <div id="modal" class="modal-bg" hidden>
+    <div class="modal">
+      <h1 style="font-size:16px;margin-bottom:6px">Connect to Supabase</h1>
+      <p>Same values your ESP32 / Raspberry Pi would use. Stored only in this browser's localStorage.</p>
+
+      <div class="field">
+        <label>SUPABASE_URL</label>
+        <input type="text" id="cfgUrl" placeholder="https://YOUR-PROJECT.supabase.co" />
+      </div>
+      <div class="field">
+        <label>SUPABASE_ANON_KEY</label>
+        <input type="password" id="cfgKey" placeholder="eyJhbGciOi..." />
+      </div>
+      <div class="field">
+        <label>ZONE_ID (uuid)</label>
+        <input type="text" id="cfgZone" placeholder="00000000-0000-0000-0000-000000000000" />
+      </div>
+      <div class="field">
+        <label>DEVICE_SECRET (uuid)</label>
+        <input type="password" id="cfgSecret" placeholder="00000000-0000-0000-0000-000000000000" />
+      </div>
+
+      <div class="actions">
+        <button id="cfgClear">Clear</button>
+        <button id="cfgSave" class="primary">Save &amp; connect</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ─── Config ───────────────────────────────────────────────────────
+    const LS_KEY = 'aquaguard.gateway.config.v1';
+    function loadCfg(){
+      try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+    }
+    function saveCfg(c){ localStorage.setItem(LS_KEY, JSON.stringify(c)); }
+
+    // ─── Supabase REST helpers ────────────────────────────────────────
+    async function rpc(fn, body){
+      const cfg = loadCfg();
+      if (!cfg.url || !cfg.key) throw new Error('not configured');
+      const t0 = performance.now();
+      const resp = await fetch(`${cfg.url.replace(/\/+$/, '')}/rest/v1/rpc/${fn}`, {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'apikey': cfg.key,
+          'Authorization': `Bearer ${cfg.key}`,
+        },
+        body: JSON.stringify(body),
+      });
+      const text = await resp.text();
+      let json = null;
+      try { json = text ? JSON.parse(text) : null; } catch { json = text; }
+      const ms = Math.round(performance.now() - t0);
+      return { ok: resp.ok, status: resp.status, json, ms };
+    }
+
+    // ─── State ────────────────────────────────────────────────────────
+    const S = {
+      alarmOn: false,
+      valveOpen: true,
+      cloudOk: false,
+      cloudThreshold: -1,
+      lastPostedPct: -1,
+      lastRttMs: -1,
+      leakStartMs: 0,
+    };
+
+    // ─── DOM helpers ──────────────────────────────────────────────────
+    const $ = sel => document.querySelector(sel);
+    const log = (msg, cls='') => {
+      const el = $('#log');
+      const ts = new Date().toLocaleTimeString();
+      const line = document.createElement('div');
+      line.innerHTML = `<span class="hint">[${ts}]</span> ${cls?`<span class="${cls}">${msg}</span>`:msg}`;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+      const max = 200;
+      while (el.children.length > max) el.removeChild(el.firstChild);
+    };
+
+    function setCloudStatus(state, msg){
+      const pill = $('#cloudPill');
+      pill.className = 'pill ' + (state==='ok'?'good': state==='bad'?'bad':'warn');
+      pill.innerHTML = `<span class="dot"></span>${msg}`;
+      S.cloudOk = (state==='ok');
+    }
+    function setThresholdPill(thr, source){
+      $('#thrPill').textContent = `Threshold ${thr}% (${source})`;
+    }
+    function setRtt(ms){
+      S.lastRttMs = ms;
+      $('#rttPill').textContent = `RTT ${ms}ms`;
+    }
+
+    function renderBoard(){
+      const alarm = S.alarmOn;
+      $('#alarmLamp').classList.toggle('on', alarm);
+      $('#alarmText').textContent = alarm ? 'ON' : 'OFF';
+      $('#alarmText').style.color = alarm ? 'var(--bad)' : 'var(--text)';
+
+      const valveOn = S.valveOpen;
+      $('#valveLamp').classList.toggle('on', valveOn);
+      $('#valveText').textContent = valveOn ? 'OPEN' : 'CLOSED';
+      $('#valveText').style.color = valveOn ? 'var(--good)' : 'var(--bad)';
+
+      $('#buzzer').classList.toggle('on', alarm);
+      $('#buzzerText').textContent = alarm ? 'BEEP' : 'SILENT';
+      $('#buzzerText').style.color = alarm ? 'var(--bad)' : 'var(--text)';
+
+      // Servo: 90° = open (arm pointing up), 0° = closed (arm pointing right-ish, rotated 90)
+      $('#servoArm').style.transform = `rotate(${valveOn ? 0 : 90}deg)`;
+    }
+
+    // ─── Inputs ───────────────────────────────────────────────────────
+    const pots = ['K','B','S','T'];
+    pots.forEach(p => {
+      const inp = $('#pot'+p);
+      const lbl = $('#pot'+p+'Val');
+      inp.addEventListener('input', () => { lbl.textContent = inp.value + '%'; });
+    });
+    document.querySelectorAll('[data-preset]').forEach(b => {
+      b.addEventListener('click', () => {
+        const v = b.getAttribute('data-preset');
+        ['K','B','S'].forEach(p => {
+          const inp = $('#pot'+p); inp.value = v;
+          $('#pot'+p+'Val').textContent = v+'%';
+        });
+        forceSend();
+      });
+    });
+    $('#resetBtn').addEventListener('click', () => {
+      S.alarmOn = false;
+      S.valveOpen = true;
+      S.leakStartMs = 0;
+      renderBoard();
+      log('local reset — alarm cleared, valve reopened (UI only). Tap "Reset valve" in the app to clear cloud state too.', 'hint');
+    });
+    $('#forceSendBtn').addEventListener('click', forceSend);
+    $('#cfgBtn').addEventListener('click', openModal);
+
+    // ─── Modal ────────────────────────────────────────────────────────
+    function openModal(){
+      const c = loadCfg();
+      $('#cfgUrl').value = c.url || '';
+      $('#cfgKey').value = c.key || '';
+      $('#cfgZone').value = c.zone || '';
+      $('#cfgSecret').value = c.secret || '';
+      $('#modal').hidden = false;
+    }
+    function closeModal(){ $('#modal').hidden = true; }
+    $('#cfgSave').addEventListener('click', () => {
+      const c = {
+        url: $('#cfgUrl').value.trim(),
+        key: $('#cfgKey').value.trim(),
+        zone: $('#cfgZone').value.trim(),
+        secret: $('#cfgSecret').value.trim(),
+      };
+      saveCfg(c);
+      log(`config saved (zone ${c.zone.slice(0,8)}…)`, 'tag');
+      closeModal();
+      pollOnce(); postOnce(true);
+    });
+    $('#cfgClear').addEventListener('click', () => {
+      localStorage.removeItem(LS_KEY);
+      ['cfgUrl','cfgKey','cfgZone','cfgSecret'].forEach(id => $('#'+id).value='');
+      setCloudStatus('warn', 'Cloud not configured');
+      log('config cleared', 'hint');
+    });
+
+    // ─── Engine ───────────────────────────────────────────────────────
+    function maxMoisture(){
+      return Math.max(+$('#potK').value, +$('#potB').value, +$('#potS').value);
+    }
+    function activeThreshold(){
+      return S.cloudThreshold >= 0 ? S.cloudThreshold : +$('#potT').value;
+    }
+
+    async function postOnce(force=false){
+      const cfg = loadCfg();
+      if (!cfg.url || !cfg.zone || !cfg.secret){
+        setCloudStatus('warn', 'Cloud not configured');
+        return;
+      }
+      const m = maxMoisture();
+      if (!force && m === S.lastPostedPct) return;
+      try {
+        const r = await rpc('submit_sensor_reading_device', {
+          p_zone_id: cfg.zone, p_moisture: m, p_device_secret: cfg.secret,
+        });
+        setRtt(r.ms);
+        if (!r.ok){
+          setCloudStatus('bad', `submit ${r.status}`);
+          log(`submit ${r.status}: ${typeof r.json==='string'?r.json:JSON.stringify(r.json)}`, 'err');
+          return;
+        }
+        setCloudStatus('ok', 'Cloud ok');
+        S.lastPostedPct = m;
+        if (r.json && r.json.leak_detected){
+          log(`reading ${m}% → cloud confirms LEAK (${r.json.response_ms}ms)`, 'tag');
+        } else {
+          log(`reading ${m}% sent`, 'ok');
+        }
+      } catch (e){
+        setCloudStatus('bad', 'Cloud unreachable');
+        log('submit failed: ' + e.message, 'err');
+      }
+    }
+
+    async function pollOnce(){
+      const cfg = loadCfg();
+      if (!cfg.url || !cfg.zone || !cfg.secret){
+        setCloudStatus('warn', 'Cloud not configured');
+        setThresholdPill(+$('#potT').value, 'local');
+        return;
+      }
+      try {
+        const r = await rpc('get_zone_state_device', {
+          p_zone_id: cfg.zone, p_device_secret: cfg.secret,
+        });
+        setRtt(r.ms);
+        if (!r.ok){
+          setCloudStatus('bad', `poll ${r.status}`);
+          log(`poll ${r.status}: ${typeof r.json==='string'?r.json:JSON.stringify(r.json)}`, 'err');
+          return;
+        }
+        setCloudStatus('ok', 'Cloud ok');
+        const j = r.json || {};
+        if (typeof j.threshold === 'number'){
+          S.cloudThreshold = j.threshold;
+          setThresholdPill(j.threshold, 'cloud');
+        }
+        const cloudOpen = !!j.valve_open;
+        // App reset → reopen here
+        if (cloudOpen && S.alarmOn){
+          S.alarmOn = false;
+          S.valveOpen = true;
+          S.leakStartMs = 0;
+          log('app sent RESET → alarm cleared, valve reopened', 'tag');
+          renderBoard();
+        }
+        // Cloud (or app) closed the valve → trigger alarm here
+        if (!cloudOpen && !S.alarmOn){
+          S.alarmOn = true;
+          S.valveOpen = false;
+          log('cloud closed the valve → triggering alarm', 'tag');
+          renderBoard();
+        }
+      } catch (e){
+        setCloudStatus('bad', 'Cloud unreachable');
+        log('poll failed: ' + e.message, 'err');
+      }
+    }
+
+    function tickLocal(){
+      const m = maxMoisture();
+      const thr = activeThreshold();
+      const wet = m >= thr;
+      const now = performance.now();
+      if (wet && !S.alarmOn){
+        if (S.leakStartMs === 0) S.leakStartMs = now;
+        else if (now - S.leakStartMs >= 2000){
+          S.alarmOn = true;
+          S.valveOpen = false;
+          log(`local trip: ${m}% ≥ ${thr}% → alarm`, 'tag');
+          renderBoard();
+        }
+      }
+      if (!wet && !S.alarmOn) S.leakStartMs = 0;
+    }
+
+    function forceSend(){ postOnce(true); }
+
+    // ─── Loops ────────────────────────────────────────────────────────
+    setInterval(tickLocal, 200);
+    setInterval(() => { if ($('#autosend').checked) postOnce(false); }, 2000);
+    setInterval(pollOnce, 1500);
+
+    // ─── Boot ─────────────────────────────────────────────────────────
+    (async function init(){
+      const cfg = loadCfg();
+
+      // Try server-side autoload (if served from our local Node helper)
+      if (!cfg.url){
+        try {
+          const r = await fetch('/config');
+          if (r.ok){
+            const j = await r.json();
+            if (j && (j.url || j.key || j.zone || j.secret)){
+              const merged = { ...cfg, ...j };
+              saveCfg(merged);
+              log('config auto-loaded from local server (.env)', 'tag');
+            }
+          }
+        } catch {}
+      }
+
+      const have = loadCfg();
+      if (!have.url || !have.key || !have.zone || !have.secret){
+        openModal();
+        setCloudStatus('warn', 'Cloud not configured');
+      } else {
+        setCloudStatus('warn', 'Connecting…');
+        pollOnce(); postOnce(true);
+      }
+      renderBoard();
+    })();
+  </script>
+</body>
+</html>
