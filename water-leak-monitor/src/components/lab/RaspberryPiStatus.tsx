@@ -4,8 +4,12 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { supabase } from "../../lib/supabase";
@@ -36,8 +40,41 @@ export function RaspberryPiStatus({
   const [readings, setReadings] = useState<PhysicalReading[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [pairOpen, setPairOpen] = useState(false);
+  const [pairCode, setPairCode] = useState("");
+  const [pairBusy, setPairBusy] = useState(false);
+  const [pairResult, setPairResult] = useState<
+    | { kind: "ok"; zoneName: string }
+    | { kind: "err"; message: string }
+    | null
+  >(null);
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
+
+  const submitPairing = useCallback(async () => {
+    const cleaned = pairCode.replace(/\D/g, "");
+    if (cleaned.length !== 6) {
+      setPairResult({ kind: "err", message: "Enter the 6-digit code shown on the Pi terminal." });
+      return;
+    }
+    setPairBusy(true);
+    setPairResult(null);
+    try {
+      const { data, error } = await supabase.rpc("claim_pi_pairing", {
+        p_code: cleaned,
+        p_zone_id: zoneId,
+      });
+      if (error) throw error;
+      const zoneName = (data as { zone_name?: string } | null)?.zone_name ?? "this zone";
+      setPairResult({ kind: "ok", zoneName });
+      setPairCode("");
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Pairing failed";
+      setPairResult({ kind: "err", message });
+    } finally {
+      setPairBusy(false);
+    }
+  }, [pairCode, zoneId]);
 
   const fetchReadings = useCallback(async () => {
     try {
@@ -389,17 +426,33 @@ export function RaspberryPiStatus({
               <Text className="text-slate-500 text-xs font-bold mt-2 text-center">
                 No physical readings yet
               </Text>
-              <Text className="text-slate-600 text-[11px] mt-1 text-center leading-4">
-                In <Text className="text-slate-400 font-bold">raspberry-pi/</Text>, set{" "}
-                <Text className="text-teal-400 font-bold">SUPABASE_EMAIL</Text> +{" "}
-                <Text className="text-teal-400 font-bold">PASSWORD</Text> (app login), or{" "}
-                <Text className="text-teal-400 font-bold">ZONE_ID</Text> +{" "}
-                <Text className="text-teal-400 font-bold">DEVICE_SECRET</Text> from Supabase,
-                then run <Text className="text-teal-400 font-bold">python3 main.py</Text>.
-                You should see <Text className="text-slate-400">Cloud: ok</Text> in the terminal.
+              <Text className="text-slate-600 text-[11px] mt-1 mb-3 text-center leading-4">
+                Run <Text className="text-teal-400 font-bold">python3 main.py</Text> in{" "}
+                <Text className="text-slate-400 font-bold">raspberry-pi/</Text>. It will print a
+                6-digit code — enter it below to bind the Pi to this zone.
               </Text>
             </View>
           )}
+
+          {/* Pair button — always visible while Pi is offline */}
+          {status === "offline" ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setPairResult(null);
+                setPairCode("");
+                setPairOpen(true);
+              }}
+              className="bg-teal-600/80 rounded-2xl py-3 items-center border border-teal-400/25 active:opacity-85 mb-2"
+            >
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="link" size={16} color="#fff" />
+                <Text className="text-white font-bold text-sm">
+                  Pair this Raspberry Pi
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
 
           {/* AI compare button */}
           {readings.length > 0 && onRequestAiCompare ? (
@@ -418,6 +471,130 @@ export function RaspberryPiStatus({
           ) : null}
         </View>
       ) : null}
+
+      {/* Pairing modal */}
+      <Modal
+        visible={pairOpen}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setPairOpen(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          className="flex-1"
+        >
+          <Pressable
+            className="flex-1 justify-center items-center px-5"
+            style={{ backgroundColor: "rgba(0,0,0,0.65)" }}
+            onPress={() => setPairOpen(false)}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-slate-900 rounded-3xl border border-slate-700 p-5"
+            >
+              <View className="flex-row items-center gap-3 mb-1">
+                <View
+                  className="w-11 h-11 rounded-2xl items-center justify-center"
+                  style={{ backgroundColor: "#0f3a31", borderWidth: 1, borderColor: "#10b981" }}
+                >
+                  <Ionicons name="link" size={20} color="#34d399" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-lg font-bold">Pair Raspberry Pi</Text>
+                  <Text className="text-slate-500 text-[11px]">
+                    Bind a running Pi script to this zone
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setPairOpen(false)}
+                  className="w-9 h-9 rounded-full items-center justify-center bg-slate-800 active:opacity-80"
+                  accessibilityLabel="Close"
+                >
+                  <Ionicons name="close" size={18} color="#cbd5e1" />
+                </Pressable>
+              </View>
+
+              <View className="mt-4 bg-slate-950 border border-slate-800 rounded-2xl p-3">
+                <Text className="text-slate-400 text-[11px] leading-4">
+                  On the Raspberry Pi (or your laptop), run{" "}
+                  <Text className="text-teal-400 font-bold">python3 main.py</Text> in the
+                  <Text className="text-slate-300 font-bold"> raspberry-pi/</Text> folder.
+                  The terminal will show a 6-digit code — type it below.
+                </Text>
+              </View>
+
+              <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mt-4 mb-1">
+                6-digit code
+              </Text>
+              <TextInput
+                value={pairCode}
+                onChangeText={(t) => setPairCode(t.replace(/\D/g, "").slice(0, 6))}
+                keyboardType="number-pad"
+                placeholder="123456"
+                placeholderTextColor="#475569"
+                maxLength={6}
+                autoFocus
+                style={{
+                  backgroundColor: "#020617",
+                  borderColor: "#1e293b",
+                  borderWidth: 1,
+                  borderRadius: 14,
+                  color: "#e2e8f0",
+                  fontSize: 28,
+                  fontWeight: "700",
+                  letterSpacing: 12,
+                  textAlign: "center",
+                  paddingVertical: 14,
+                }}
+              />
+
+              {pairResult ? (
+                <View
+                  className="mt-3 rounded-xl px-3 py-2"
+                  style={{
+                    backgroundColor: pairResult.kind === "ok" ? "#06281e" : "#2a0d0d",
+                    borderWidth: 1,
+                    borderColor: pairResult.kind === "ok" ? "#0d6e54" : "#7f1d1d",
+                  }}
+                >
+                  <Text
+                    className="text-[12px] font-semibold"
+                    style={{ color: pairResult.kind === "ok" ? "#34d399" : "#fca5a5" }}
+                  >
+                    {pairResult.kind === "ok"
+                      ? `Paired with “${pairResult.zoneName}”. The Pi will start syncing within a few seconds.`
+                      : pairResult.message}
+                  </Text>
+                </View>
+              ) : null}
+
+              <Pressable
+                accessibilityRole="button"
+                disabled={pairBusy || pairCode.length !== 6}
+                onPress={submitPairing}
+                className="mt-4 rounded-2xl py-3 items-center"
+                style={{
+                  backgroundColor:
+                    pairBusy || pairCode.length !== 6 ? "#0f3a31" : "#10b981",
+                  opacity: pairBusy ? 0.7 : 1,
+                }}
+              >
+                {pairBusy ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white font-bold text-sm">
+                    Pair to this zone
+                  </Text>
+                )}
+              </Pressable>
+
+              <Text className="text-slate-600 text-[10px] text-center mt-3">
+                Code expires after 10 minutes. Restart the Pi script to get a new one.
+              </Text>
+            </Pressable>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

@@ -30,6 +30,7 @@ import time
 import traceback
 
 import config
+import pairing
 from actuators import Buzzer, StatusLED, Valve, cleanup as gpio_cleanup
 from local_ai import LocalAI
 from sensor import create_sensor
@@ -99,13 +100,30 @@ def main():
     device_cloud = bool(config.DEVICE_SECRET and config.ZONE_ID)
     email_ok = cloud.sign_in()
 
-    # Cloud sync: either email JWT, or device secret + zone UUID (anon RPC)
+    # If env vars aren't set, fall back to the saved pairing config
+    # (~/.aquaguard-pi.json), and if that's missing too, run the
+    # interactive pairing flow so the user can claim this Pi from the app.
+    saved = {} if device_cloud else pairing.load_saved()
+    if not device_cloud and not email_ok and not saved:
+        print("[main] No credentials found — starting pairing flow.")
+        paired = pairing.pair_interactive(cloud)
+        if paired:
+            saved = paired
+        else:
+            print("[main] Pairing aborted; running OFFLINE (readings stay local).")
+
+    # Promote saved/paired secret into the global config so submit_reading
+    # picks it up via the existing device-secret path.
+    if saved:
+        config.ZONE_ID = saved["zone_id"]
+        config.DEVICE_SECRET = saved["device_secret"]
+        device_cloud = True
+
     cloud_sync = email_ok or device_cloud
     if not cloud_sync:
         print("[main] WARNING: No cloud credentials — readings stay local only (app shows OFFLINE)")
-        print("[main] Set ONE of:")
-        print("       A) SUPABASE_EMAIL + SUPABASE_PASSWORD (same as app login), or")
-        print("       B) ZONE_ID + DEVICE_SECRET (from Supabase: zones.id + devices.device_secret)")
+        print("[main]   Tip: re-run the script and enter the printed code in the app's")
+        print("[main]   Lab → Raspberry Pi → ‘Pair this Pi’ modal.")
 
     zone_id: str | None = None
     threshold = config.DEFAULT_MOISTURE_THRESHOLD
@@ -115,7 +133,7 @@ def main():
         zone_id = config.ZONE_ID
         device_secrets = [config.DEVICE_SECRET]
         threshold = config.DEFAULT_MOISTURE_THRESHOLD
-        print(f"[main] Cloud: device-secret mode · zone {zone_id[:8]}… · threshold {threshold}% (set DEFAULT_MOISTURE_THRESHOLD to match Monitor)")
+        print(f"[main] Cloud: device-secret mode · zone {zone_id[:8]}… · threshold {threshold}%")
 
     if email_ok:
         try:

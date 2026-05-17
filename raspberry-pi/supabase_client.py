@@ -240,3 +240,31 @@ class SupabaseEdge:
     def reset_valve(self, zone_id: str):
         """Reopen the valve in the cloud."""
         return self.rpc("reset_zone_valve", {"p_zone_id": zone_id})
+
+    # ─── Pi pairing RPCs (anon-safe) ─────────────────────────────────
+
+    def _anon_rpc(self, function_name: str, params: dict[str, Any]) -> Any:
+        """Call an RPC as the anon role (no user JWT required)."""
+        body = json.dumps(params).encode()
+        req = urllib.request.Request(
+            f"{self._url}/rest/v1/rpc/{function_name}",
+            data=body,
+            headers=self._anon_headers(),
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                raw = resp.read().decode()
+                return json.loads(raw) if raw else None
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode() if e.fp else str(e)
+            raise RuntimeError(f"RPC {function_name} failed ({e.code}): {error_body}")
+
+    def register_pi_pairing(self, code: str):
+        """Register/refresh a 6-digit pairing code so the app can claim it."""
+        return self._anon_rpc("register_pi_pairing", {"p_code": code})
+
+    def read_pi_pairing(self, code: str) -> dict:
+        """Poll for a claimed pairing. Returns {claimed, zone_id?, device_secret?}."""
+        out = self._anon_rpc("read_pi_pairing", {"p_code": code})
+        return out if isinstance(out, dict) else {"claimed": False}
